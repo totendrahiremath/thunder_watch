@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>THUNDERWATCH AI · SIH26072</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='tw.css') }}">
+</head>
+<body class="tw-body intro-lock" data-default-ts="{{ default_ts }}">
+  <canvas id="wx-canvas" aria-hidden="true"></canvas>
+  <div class="clouds c1" aria-hidden="true"></div>
+  <div class="clouds c2" aria-hidden="true"></div>
+  <div class="fog-layer" aria-hidden="true"></div>
+  <div class="horizon" aria-hidden="true"></div>
+
+  <div id="landing" class="landing" role="dialog" aria-modal="true" aria-label="System initialization">
+    <button type="button" id="skip-intro" class="skip-btn">SKIP</button>
+    <div class="bolt" aria-hidden="true"></div>
+    <div class="landing-core">
+      <p class="land-team">THUNDERWATCH AI</p>
+      <h1 class="land-product">THUNDERWATCH <span>AI</span></h1>
+      <p class="land-sub">AI-POWERED THUNDERSTORM INTELLIGENCE</p>
+      <p class="land-sih">SIH26072</p>
+      <p class="land-tag">FROM DATA TO A SAFER TOMORROW</p>
+    </div>
+    <div class="land-features">
+      <span><svg viewBox="0 0 24 24"><path d="M4 14c4-8 12-8 16 0" fill="none" stroke="currentColor"/></svg>ATMOSPHERE</span>
+      <span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7" fill="none" stroke="currentColor"/><path d="M12 8v4l3 2" fill="none" stroke="currentColor"/></svg>AI MODELS</span>
+      <span><svg viewBox="0 0 24 24"><path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z" fill="none" stroke="currentColor"/></svg>INDIA</span>
+      <span><svg viewBox="0 0 24 24"><path d="M12 21s-6-4.5-6-9a6 6 0 1 1 12 0c0 4.5-6 9-6 9z" fill="none" stroke="currentColor"/></svg>SAFER COMMUNITIES</span>
+    </div>
+    <div class="land-init">
+      <p>INITIALIZING SYSTEM…</p>
+      <div class="bar"><i id="init-bar"></i></div>
+      <ul>
+        <li data-step="0">Atmospheric Engine</li>
+        <li data-step="1">Model Engine</li>
+        <li data-step="2">Location Engine</li>
+        <li data-step="3">Data Layers</li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="app" class="app" hidden>
+    <header class="hdr">
+      <div class="brand-block">
+        <span class="team-mark">THUNDERWATCH AI</span>
+        <div>
+          <h1>THUNDERWATCH AI</h1>
+          <p class="hdr-sub">Multi-location research prototype · supported reference locations</p>
+        </div>
+      </div>
+      <div class="hdr-mid">
+        <span class="pill">SIH26072</span>
+        <span class="pill gold" id="mode-pill">HISTORICAL REPLAY</span>
+        <span class="pill cyan" id="model-pill">MODEL B</span>
+        <span class="pill live" title="Research application status, not live forecasting">SYSTEM ONLINE</span>
+      </div>
+      <div class="hdr-tools">
+        <span class="hdr-replay-only">
+        <label class="tiny" for="hist-time">T (UTC)</label>
+        <input id="hist-time" type="datetime-local" value="2023-06-15T12:00">
+        <button id="run-all" type="button">RUN 5-LOCATION REPLAY</button>
+        </span>
+        <select id="motion" aria-label="Animation intensity">
+          <option value="full">FULL</option>
+          <option value="reduced">REDUCED</option>
+          <option value="off">OFF</option>
+        </select>
+        <button type="button" id="replay-intro" class="ghost">REPLAY INTRO</button>
+      </div>
+    </header>
+
+    <aside class="nav" aria-label="Primary">
+      <button class="nav-item active" data-view="live">⚡ LIVE PREDICTION <em class="nav-live">RESEARCH LIVE</em></button>
+      <button class="nav-item" data-view="replay">◷ HISTORICAL REPLAY</button>
+      <button class="nav-item" data-view="locations">⌖ LOCATIONS</button>
+      <button class="nav-item" data-view="layers">▦ DATA LAYERS</button>
+      <button class="nav-item" data-view="model">▣ AI MODEL</button>
+      <button class="nav-item" data-view="status">◎ SYSTEM STATUS</button>
+      <button class="nav-item" data-view="about">◆ ABOUT</button>
+    </aside>
+
+    <main class="main">
+      <p id="dash-error" class="dash-error hidden" role="alert"></p>
+      <section class="view" data-view="replay">
+        <article class="panel lab">
+          <h2>HISTORICAL REPLAY</h2>
+          <p id="scan" class="banner scan hidden" role="status"></p>
+          <p class="banner">Historical Replay uses archived atmospheric and NWP data. It is not a live, near-real-time, or operational forecasting system. Model probabilities are uncalibrated. This is not Live Research.</p>
+          <p class="cap" id="replay-t-ist">Replay time displays in IST after a run. Input remains UTC.</p>
+          <p class="cap">Quick verified scenarios</p>
+          <div class="quick">
+            {% for case in demo_cases %}
+            <button type="button" class="demo" data-ts="{{ case.timestamp_utc }}">{{ case.label }}</button>
+            {% endfor %}
+          </div>
+          <p id="page-error" class="error hidden"></p>
+        </article>
+        <div class="desk">
+          <article class="panel map-panel">
+            <div class="panel-h">
+              <h2>STATION-BASED AI RISK</h2>
+              <p class="cap">Historical station-based AI risk · five reference locations · not a continuous heatmap or radar</p>
+            </div>
+            <div class="map-wrap" id="map-wrap">
+              <div id="india-gl" class="india-gl" aria-label="India station risk map"></div>
+              <svg id="india-fallback" class="india-fallback" hidden viewBox="0 0 360 380" aria-label="Fallback geographic view">
+                <path id="fb-land" fill="#163e58" stroke="#6ad4ff" stroke-width="1.4"/>
+                <g id="fb-stations"></g>
+              </svg>
+              <div id="map-tip" class="map-tip" hidden></div>
+              <div id="map-callout" class="map-callout" hidden></div>
+              <div class="map-layers" aria-label="Map layers">
+                <p>LAYERS</p>
+                <span class="on">Geographic basemap</span>
+                <span class="on">Reference stations</span>
+                <span class="on">Station-based AI risk</span>
+                <span class="case">SATELLITE — CASE REPLAY</span>
+                <span class="off">RADAR — CONDITIONAL ACCESS</span>
+                <span class="off">LIGHTNING — DATA ACCESS PENDING</span>
+              </div>
+              <div class="map-tools">
+                <button type="button" id="map-zoom-in" aria-label="Zoom in">+</button>
+                <button type="button" id="map-zoom-out" aria-label="Zoom out">−</button>
+                <button type="button" id="map-reset">RESET VIEW</button>
+                <button type="button" id="map-basemap" hidden>BASEMAP</button>
+              </div>
+              <p id="map-mode" class="map-mode"></p>
+            </div>
+          </article>
+
+          <div class="right-col">
+            <article class="panel hero-risk" id="hero-risk">
+              <p class="kicker">HIGHEST MODEL RISK</p>
+              <div class="hero-row">
+                <div>
+                  <h2 id="hero-loc">AWAITING REPLAY</h2>
+                  <p class="icao" id="hero-icao">—</p>
+                </div>
+                <p class="big" id="hero-pct">--</p>
+              </div>
+              <p class="lead-lab">THUNDERSTORM RISK (+1H)</p>
+              <p class="thr" id="hero-thr">Threshold: 6.5% · uncalibrated probabilities</p>
+              <p class="state" id="hero-state">AWAITING REPLAY</p>
+              <p class="cap disc-line">AI research prototype — predictions are experimental and not an official meteorological warning.</p>
+              <div class="rings">
+                <div class="ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="32"/><circle class="arc" cx="40" cy="40" r="32"/></svg><strong id="r1">--</strong><span>+1H</span></div>
+                <div class="ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="32"/><circle class="arc" cx="40" cy="40" r="32"/></svg><strong id="r2">--</strong><span>+2H</span></div>
+                <div class="ring"><svg viewBox="0 0 80 80"><circle cx="40" cy="40" r="32"/><circle class="arc" cx="40" cy="40" r="32"/></svg><strong id="r3">--</strong><span>+3H</span></div>
+              </div>
+            </article>
+            <article class="panel atmo-panel">
+              <h2>ATMOSPHERIC SIGNALS</h2>
+              <div id="atmo-grid" class="atmo-grid"><p class="muted">AWAITING REPLAY</p></div>
+            </article>
+            <article class="panel sat-panel">
+              <h2>SATELLITE EVIDENCE</h2>
+              <p class="cap">INSAT-3DR CMK · case replay · not a Model B input</p>
+              <div id="sat-grid" class="atmo-grid"><p class="muted">No satellite case loaded</p></div>
+            </article>
+          </div>
+        </div>
+
+        <div class="bottom-grid">
+          <article class="panel">
+            <div class="panel-h"><h2>LOCATION RISK</h2><span class="cap">REFERENCE LOCATIONS</span></div>
+            <div class="table-wrap">
+            <table class="risk-table">
+              <thead><tr><th>#</th><th>Location</th><th>+1H</th><th>+2H</th><th>+3H</th><th>Status</th></tr></thead>
+              <tbody id="loc-body">
+                {% for sid, name in station_labels.items() %}
+                <tr data-sid="{{ sid }}"><td>—</td><td>{{ name }} <span class="icao">{{ sid }}</span></td><td>—</td><td>—</td><td>—</td><td>AWAITING REPLAY</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+            </div>
+          </article>
+          <article class="panel">
+            <h2>MULTIMODAL INTELLIGENCE</h2>
+            <div class="mm-grid">
+              <div class="mm ok"><h3>ATMOSPHERIC OBSERVATIONS</h3><p class="st">CONNECTED</p></div>
+              <div class="mm ok"><h3>NWP</h3><p class="st">CONNECTED WHERE VALIDATED</p></div>
+              <div class="mm case"><h3>SATELLITE</h3><p class="st">CASE REPLAY READY</p><p class="cap">INSAT-3DR CMK · evidence only</p></div>
+              <div class="mm warn"><h3>RADAR</h3><p class="st">CONDITIONAL ACCESS</p><p class="cap">Historical quantitative radar pending institutional access</p></div>
+              <div class="mm pending"><h3>GROUND LIGHTNING</h3><p class="st">DATA ACCESS PENDING</p><p class="cap">LIS climatology is reference only, not live observations</p></div>
+            </div>
+          </article>
+          <article class="panel status-panel">
+            <h2>MODEL &amp; SYSTEM</h2>
+            <dl>
+              <dt>MODEL</dt><dd id="sys-model">ThunderWatch AI Model B</dd>
+              <dt>LEADS</dt><dd>1h / 2h / 3h</dd>
+              <dt>THRESHOLD</dt><dd id="sys-threshold">6.5%</dd>
+              <dt>MODEL TYPE</dt><dd>Random Forest</dd>
+              <dt>MODES</dt><dd id="sys-mode">Historical Replay / Live Research</dd>
+              <dt>DATA SOURCE</dt><dd id="sys-source">Validated historical overlap</dd>
+              <dt>NWP</dt><dd>Available where validated</dd>
+              <dt>SATELLITE</dt><dd>Case Replay Ready</dd>
+              <dt>RADAR</dt><dd>Conditional Access</dd>
+              <dt>LIGHTNING</dt><dd>Data Access Pending</dd>
+              <dt>STATUS</dt><dd>Research Prototype</dd>
+            </dl>
+          </article>
+        </div>
+        <article class="panel">
+          <h2>MODEL PREDICTION vs OBSERVATION</h2>
+          <p class="cap">Historical outcomes are revealed after prediction and are not model inputs.</p>
+          <div id="verify-body"><p class="muted">AWAITING REPLAY</p></div>
+        </article>
+      </section>
+
+      <section class="view view-live active" data-view="live">
+        <article class="panel live-arch">
+          <p class="kicker">LIVE AI PREDICTION</p>
+          <h2>RESEARCH PROTOTYPE</h2>
+          <p id="live-fetch" class="banner live-fetch" role="status">LIVE DATA · AWAITING RUN</p>
+          <p class="banner live-note hidden">AI research prototype — predictions are experimental and not an official meteorological warning. Model probabilities are uncalibrated.</p>
+          <p id="live-error" class="error hidden" role="alert"></p>
+          <pre id="live-diagnostics" class="error hidden" hidden></pre>
+          <button type="button" id="run-live-all" class="live-run">RUN 5-LOCATION LIVE DATA</button>
+          <dl class="live-meta">
+            <div><dt>SOURCE</dt><dd id="live-src">—</dd></div>
+            <div><dt>OBSERVATION (IST)</dt><dd id="live-obs">—</dd></div>
+            <div><dt>PREDICTION TIME (IST)</dt><dd id="live-ptime">—</dd></div>
+            <div><dt>DATA AGE</dt><dd id="live-age">—</dd></div>
+            <div><dt>MODE</dt><dd id="live-mode">LIVE</dd></div>
+          </dl>
+        </article>
+
+        <div class="live-desk">
+        <article class="panel map-panel">
+          <div class="panel-h">
+            <h2>LIVE STATION RISK</h2>
+            <p class="cap">Satellite Hybrid · station-based AI risk · five reference locations</p>
+          </div>
+          <div class="map-wrap live-map-wrap" id="live-map-wrap">
+            <div class="india-gl js-india-gl" aria-label="Live station risk map"></div>
+            <svg class="india-fallback js-india-fallback" hidden viewBox="0 0 360 380" aria-label="Fallback geographic view">
+              <path class="js-fb-land" fill="#163e58" stroke="#6ad4ff" stroke-width="1.4"/>
+              <g class="js-fb-stations"></g>
+            </svg>
+            <div class="map-tip js-map-tip" hidden></div>
+            <div class="map-callout js-map-callout" hidden></div>
+            <p id="live-map-mode" class="map-mode"></p>
+            <div class="map-tools">
+              <button type="button" class="js-map-zoom-in" aria-label="Zoom in">+</button>
+              <button type="button" class="js-map-zoom-out" aria-label="Zoom out">−</button>
+              <button type="button" class="js-map-reset">RESET VIEW</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="panel hero-risk" id="live-hero">
+          <p class="kicker">HIGHEST MODEL RISK</p>
+          <div class="hero-row">
+            <div>
+              <h2 id="live-hero-loc">AWAITING LIVE DATA</h2>
+              <p class="icao" id="live-hero-icao">—</p>
+            </div>
+            <p class="big" id="live-hero-pct">--</p>
+          </div>
+          <p class="lead-lab">MODEL RISK (+1H)</p>
+          <p class="thr">Threshold: 6.5% · uncalibrated</p>
+          <p class="state" id="live-hero-state">AWAITING LIVE DATA</p>
+          <div class="live-leads">
+            <div class="live-lead" data-lead="1h"><span>+1 H</span><strong id="live-p1">--</strong><em id="live-a1">—</em><small id="live-v1">valid —</small><small>Threshold 6.5%</small></div>
+            <div class="live-lead" data-lead="2h"><span>+2 H</span><strong id="live-p2">--</strong><em id="live-a2">—</em><small id="live-v2">valid —</small><small>Threshold 6.5%</small></div>
+            <div class="live-lead" data-lead="3h"><span>+3 H</span><strong id="live-p3">--</strong><em id="live-a3">—</em><small id="live-v3">valid —</small><small>Threshold 6.5%</small></div>
+          </div>
+        </article>
+        </div>
+
+        <article class="panel" id="live-storm-panel">
+          <div class="panel-h">
+            <h2>LIVE THUNDERSTORM RISK</h2>
+            <span class="cap" id="live-sort-lab">SORTED BY +1H MODEL RISK</span>
+          </div>
+          <div class="live-sort" role="group" aria-label="Sort lead">
+            <button type="button" class="live-sort-btn active" data-lead="1h">+1H</button>
+            <button type="button" class="live-sort-btn" data-lead="2h">+2H</button>
+            <button type="button" class="live-sort-btn" data-lead="3h">+3H</button>
+          </div>
+          <div id="live-storm" class="live-storm"></div>
+        </article>
+
+        <div class="live-context">
+          <article class="panel atmo-panel">
+            <h2>ATMOSPHERIC SIGNALS</h2>
+            <div id="live-atmo-grid" class="atmo-grid"><p class="muted">AWAITING LIVE DATA</p></div>
+          </article>
+          <article class="panel">
+            <h2>NWP / MULTIMODAL INTELLIGENCE</h2>
+            <div class="mm-grid">
+              <div class="mm ok"><h3>ATMOSPHERIC OBSERVATIONS</h3><p class="st">CONNECTED</p></div>
+              <div class="mm ok"><h3>NWP</h3><p class="st">CONNECTED WHERE VALIDATED</p></div>
+              <div class="mm case"><h3>SATELLITE</h3><p class="st">CASE REPLAY READY</p><p class="cap">Historical evidence only — not a live Model B input</p></div>
+              <div class="mm warn"><h3>RADAR</h3><p class="st">CONDITIONAL ACCESS</p></div>
+              <div class="mm pending"><h3>GROUND LIGHTNING</h3><p class="st">DATA ACCESS PENDING</p></div>
+            </div>
+          </article>
+          <article class="panel sat-panel">
+            <h2>SATELLITE EVIDENCE / CONTEXT</h2>
+            <p class="cap">INSAT-3DR CMK is historical case evidence. Not used in live Model B.</p>
+            <div id="live-sat-grid" class="atmo-grid"><p class="muted">Satellite case replay is historical only.</p></div>
+          </article>
+          <article class="panel status-panel">
+            <h2>MODEL &amp; SYSTEM</h2>
+            <dl>
+              <dt>MODEL</dt><dd>ThunderWatch AI Model B</dd>
+              <dt>LEADS</dt><dd>1h / 2h / 3h</dd>
+              <dt>THRESHOLD</dt><dd>6.5%</dd>
+              <dt>MODEL TYPE</dt><dd>Random Forest</dd>
+              <dt>STATUS</dt><dd>Research Prototype</dd>
+            </dl>
+          </article>
+        </div>
+      </section>
+      <section class="view" data-view="locations">
+        <article class="panel">
+          <h2>SUPPORTED REFERENCE LOCATIONS</h2>
+          <p class="cap">Multi-location research prototype — not a single-city system.</p>
+          <ul class="loc-list">{% for sid, name in station_labels.items() %}<li><strong>{{ name }}</strong> {{ sid }}</li>{% endfor %}</ul>
+        </article>
+      </section>
+      <section class="view" data-view="layers">
+        <article class="panel">
+          <h2>DATA LAYERS</h2>
+          <ul class="status-list">
+            <li>Atmospheric observations — CONNECTED</li>
+            <li>GFS NWP — CONNECTED WHERE VALIDATED</li>
+            <li>INSAT-3DR CMK satellite — CASE REPLAY READY (evidence, not Model B input)</li>
+            <li>Radar — CONDITIONAL ACCESS</li>
+            <li>Ground lightning — DATA ACCESS PENDING</li>
+            <li>LIS lightning climatology — REFERENCE ONLY if shown</li>
+          </ul>
+        </article>
+      </section>
+      <section class="view" data-view="model">
+        <article class="panel">
+          <h2>AI MODEL</h2>
+          <p>ThunderWatch AI Model B · Random Forest · 83 atmospheric+NWP features · leads 1h / 2h / 3h · threshold 6.5%.</p>
+          <p class="cap">Uncalibrated research probabilities. Satellite, radar, and lightning are not frozen Model B inputs.</p>
+        </article>
+      </section>
+      <section class="view" data-view="status">
+        <article class="panel">
+          <h2>SYSTEM STATUS</h2>
+          <p>Research prototype online. Historical Replay and Live Research are separate modes.</p>
+          <p class="cap">Not an official meteorological warning service.</p>
+        </article>
+      </section>
+      <section class="view" data-view="about">
+        <article class="panel about">
+          <p class="kicker">BUILT BY</p>
+          <h2>THUNDERWATCH AI</h2>
+          <p>AIML THUNDERSTORM NOWCASTING · SIH26072</p>
+          <p class="tag">FROM DATA TO A SAFER TOMORROW</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="foot" id="app-foot">THUNDERWATCH AI · SIH26072 · Research Prototype · LIVE RESEARCH</footer>
+    <nav class="mob-nav" aria-label="Mobile">
+      <button data-view="live">LIVE</button>
+      <button data-view="replay">REPLAY</button>
+      <button data-view="locations">SITES</button>
+      <button data-view="about">TEAM</button>
+    </nav>
+  </div>
+
+  <div class="tech-compat" hidden>
+  {% if result %}
+    <h2>Single-station replay (compatibility)</h2>
+    <p>Replay mode {{ result.replay_mode }} · Model version {{ result.model_version }}</p>
+    {% if display.unavailable %}
+    <p>Replay unavailable — {{ display.reason }}</p>
+    {% else %}
+      {% for lead in display.leads %}
+      <p>{{ lead.title }} Risk probability {{ lead.probability_pct }}% Threshold: {{ lead.threshold_pct }} {{ lead.status }}</p>
+      {% endfor %}
+    <h3>Historical Verification</h3>
+    <p>The following observations are revealed only after the replay prediction and are not inputs to the model.</p>
+    {% endif %}
+  {% endif %}
+  {% if error %}<p>{{ error }}</p>{% endif %}
+  </div>
+
+  <script>
+    window.TW = { stations: {{ station_labels | tojson }} };
+  </script>
+  <script src="{{ url_for('static', filename='india-map.js') }}"></script>
+  <script src="{{ url_for('static', filename='geo-map.js') }}"></script>
+  <script src="{{ url_for('static', filename='tw.js') }}"></script>
+  <script defer src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+</body>
+</html>
